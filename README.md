@@ -1,7 +1,7 @@
 # MBE_Growth_Simulation_Code-SourceFiles-Windows
-This is the source file package of the MBE Growth Simulation Code for Windows users. For Mac users, please find the release at https://github.com/tianshi-wang/MBE_Growth_Simulation_Code-SourceFiles-Mac
+This is the source file package of the MBE Growth Simulation Code for Windows users. For Mac users, please find the release at https://github.com/tianshi-wang/MBE_Growth_Simulation_Code-Mac
 
-The compiled code is released at https://github.com/tianshi-wang/MBE_Growth_Simulation_Code-release-Windows. The code can simulate growth morphology at different conditions for molecular beam epitaxy (MBE). The calculation is based on kinetic Monte Carlo method. The interactive 3D rending is excellent for education purpose.
+The compiled code is released at https://github.com/tianshi-wang/MBE_Growth_Simulation_Code-Windows/releases. The code can simulate growth morphology at different conditions for molecular beam epitaxy (MBE). The calculation is based on kinetic Monte Carlo method. The interactive 3D rending is excellent for education purpose.
 
 The coded is based on the KMCInterative code written by Michael Grundmann (mgrundmann@ece.ucsb.edu). The paper about KMCInteractive can be found at: http://my.ece.ucsb.edu/mgrundmann/kmcinteractive/mbesimpaper.pdf
 
