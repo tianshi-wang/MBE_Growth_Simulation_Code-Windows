@@ -1,4 +1,4 @@
-]# MBE_Growth_Simulation_Code-SourceFiles-Windows
+# Source Files of the MBE Growth Simulation Code (Windows)
 This is the source file package of the MBE Growth Simulation Code for Windows users. For Mac users, please find the source files and compiled code using this [link](https://github.com/tianshi-wang/MBE_Growth_Simulation_Code-Mac).
 
 The compiled code is released [here](https://github.com/tianshi-wang/MBE_Growth_Simulation_Code-Windows/releases). The code can simulate growth morphology at different conditions for molecular beam epitaxy (MBE). The calculation is based on kinetic Monte Carlo method. The interactive 3D rending is excellent for education purpose.
