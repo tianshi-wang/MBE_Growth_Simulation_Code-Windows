@@ -1,18 +1,19 @@
 #import "solver.h"
 
-#define kT (.026*temperature/300.0*q)
-#define q 1.6e-19
-#define hbar 1.055e-34
-#define planck 6.02e-34
+#define kT (.026*temperature/300.0*q)    /*Boltzmann constant * temperature */
+#define q 1.6e-19   /* Electron charge in Coulomb*/
+#define hbar 1.055e-34   /*Reduced Plank constant*/
+#define planck 6.02e-34  /*Plank constant*/
+
 double freq, bondEnergy, hoppingEnergy, desorbEnergy, currTime, temperature;
 double bondRate, hoppingRate, arrivalRate;
-int steps;
-int height[L][L];
-int update[L][L];
-double ratetotals[DEPTH][L][L];
-double rates[L][L][6];
-double bonds[5];
-double desorbRates[5];
+int steps;   /*Step morphology from UI setting*/
+int height[L][L];  /*Height for each atom[l][m]*/
+int update[L][L];  /*Whether or not to update rates for atom[l][m]*/
+double ratetotals[DEPTH][L][L];   /*Rates for each node (sum of its four children at depth+1)*/
+double rates[L][L][6];   /*Rates of atom[l][m]'s 6 behaviors: hopping right, left, up, down, absorp, desorp */
+double bonds[5];    /*Rates for cases of 0, 1, ..., 4 bonds; only 4 direct neighbors*/
+double desorbRates[5];  
 int arraySize;
 double speedratio;
 bool valueChanged = false;
@@ -33,8 +34,6 @@ static int shft1, shft2, shft3, k1=31, k2=29, k3=28;
 static int q1=13, q2=2, q3=3, p1=12, p2=4, p3=17;
 /* static int q1=3, q2=2, q3=13, p1=20, p2=16, p3=7; */
 double myrandv;
-
-
 
 
 unsigned int myrand()
@@ -67,24 +66,28 @@ void myrand_seed( unsigned int a, unsigned int b, unsigned int c )
     myrand();
 }
 
+// Calculate the bonds between [i][j] and its neighbors
+// heightadj: height ajustment on the current height of atom[i][j]
 int calcBonds(int i, int j, int heightadj)
 {
     int bonds = 0;
     j=(j+arraySize)%arraySize;
     i=(i+arraySize)%arraySize;
     int currheight = height[(i+arraySize)%arraySize][(j+arraySize)%arraySize] + heightadj;
-
+    
+    // steps: the height difference in the initial morphology
+    // For periodic boundary condition, the final height difference remains as steps
     if (height[(i-1+arraySize)%arraySize][j] + (i==0?-steps:0) >= currheight) bonds++;
     if (height[(i+1+arraySize)%arraySize][j] + (i==arraySize-1?steps:0) >= currheight) bonds++;
     if (height[i][(j-1+arraySize)%arraySize] >= currheight) bonds++;
     if (height[i][(j+1+arraySize)%arraySize] >= currheight) bonds++;
 
-//    printf( "currheight is %d  atombonds is %d + at (i,j) %d, %d\n", currheight, bonds, i, j);
-
-
+    //printf( "currheight is %d  atombonds is %d + at (i,j) %d, %d\n", currheight, bonds, i, j);
     return bonds;
 }
 
+// Calculate the transition rate for atom [i][j] from Boltzmann Distribution.
+// Update rate[i][j][0:6]: hopping up, down, left, right, desorption, adsorption
 void calcLocalRate(int i, int j)
 {
     i=(i+arraySize)%arraySize;
@@ -93,15 +96,11 @@ void calcLocalRate(int i, int j)
 
     int newbonds;
     int k;
-//    printf( "currheight is %d   at (i,j) %d, %d\n", height[i][j], i, j);
-
-    height[i][j]--;
-//    printf( "currheight is %d   at (i,j) %d, %d\n", height[i][j], i, j);
+    
+    //After hopping, height[i][j]-- for calculating the jumped atom's new bonds
+    height[i][j]--;  
 
     newbonds = calcBonds(i, j+1, 1);
-
-    //printf("newbonds  is %d, at i= %d j=%d\n", newbonds, i,j);
-
     if (currbonds > newbonds)
         rates[i][j][0] = bonds[currbonds-newbonds];
     else
@@ -110,7 +109,6 @@ void calcLocalRate(int i, int j)
     newbonds = calcBonds(i, j-1, 1);
     if (currbonds > newbonds)
         rates[i][j][1] = bonds[currbonds-newbonds];
-
     else
         rates[i][j][1] = bonds[0];
 
@@ -125,16 +123,17 @@ void calcLocalRate(int i, int j)
         rates[i][j][3] = bonds[currbonds-newbonds];
     else
         rates[i][j][3] = bonds[0];
+    
     height[i][j]++;
 
     rates[i][j][4] = desorbRates[currbonds];
 
     rates[i][j][5] = arrivalRate;
     ratetotals[DEPTH-1][i][j]=0;
+    
     for (k=0;k<6;k++)
         {ratetotals[DEPTH-1][i][j]+=rates[i][j][k];
         //if (k==5) printf("At k=%d, self.ratetotals is: %f:\n", k, ratetotals[DEPTH-1][i][j]);
-
     }
 
     update[i][j] = 1;
@@ -181,6 +180,7 @@ void initArrays()
 //    printf("initArrays done\n");
 
 }
+
 void updateRates()
 {
     int i;
@@ -191,9 +191,7 @@ void updateRates()
     bondRate = exp(-bondEnergy*q/kT);
     hoppingRate = freq*exp(-hoppingEnergy*q/kT);
     desorbRate = freq*exp(-desorbEnergy*q/kT);
-//    printf("bondRate is %f \n",bondRate);
-//    printf("freq is %f \n",freq);
-//    printf("bondEnergy is %f \n", bondEnergy);
+
 
 //	desorbRate = 0.0;
 //	hoppingRate = 0.0;
@@ -203,7 +201,7 @@ void updateRates()
     for (i=1;i<=4;i++) {
         bonds[i]=bonds[i-1]*bondRate;
         desorbRates[i] = desorbRates[i-1]*bondRate;
-//        printf("Bond[%d] is %f", i,  bonds[i]);
+    //printf("Bond[%d] is %f", i,  bonds[i]);
     }
 
     for (i=0;i<arraySize;i++) {
@@ -216,14 +214,12 @@ void updateRates()
             updateTree(i,j);
         }
     }
-
-
 }
 
 void calcLocalRates(int i, int j)
 {
     calcLocalRate((i+arraySize)%arraySize,(j+arraySize)%arraySize);
-
+    // Check update[i][j] to avoid repeated update during one step
     if (!update[(i+arraySize+1)%arraySize][(j+arraySize+1)%arraySize])
         calcLocalRate((i+arraySize+1)%arraySize,(j+arraySize+1)%arraySize);
     if (!update[(i+arraySize-1)%arraySize][(j+arraySize+1)%arraySize])
@@ -241,6 +237,7 @@ void calcLocalRates(int i, int j)
     if (!update[(i+arraySize)%arraySize][(j+arraySize-1)%arraySize])
         calcLocalRate((i+arraySize)%arraySize,(j+arraySize-1)%arraySize);
 }
+
 void setupSteps(int newSteps)
 {
     if (newSteps == steps)
@@ -262,9 +259,8 @@ void setupSteps(int newSteps)
         }
     }
     steps = newSteps;
-
-
 }
+
 void updateLocalTree(int i, int j)
 {
     updateTree((i-1+arraySize)%arraySize,(j-1+arraySize)%arraySize);
@@ -273,6 +269,9 @@ void updateLocalTree(int i, int j)
     updateTree((i+1+arraySize)%arraySize,(j-1+arraySize)%arraySize);
 }
 
+//Find the atom to update. 
+//First layer rates: [(0,0), (1,0), (0,1), (1,1)]; find the random*total_rates is less than that of one tree node
+//Update l, m for next layer and so on until reach the leaves i.e. atoms.
 double step(double val)
 {
     double R, sumr;
@@ -285,11 +284,15 @@ double step(double val)
     val=val*R;
 
     for (i=0;i<DEPTH-1; i++) {
-        sumr = 0.0;
+        sumr = 0.0;  /*The sum of all (at most four) element in a layer so far. */
         if (val<0)
             printf("whoopps");
         if (val>ratetotals[i][l][m]+ratetotals[i][l+1][m]+ratetotals[i][l][m+1]+ratetotals[i][l+1][m+1])
             printf("got a problem here");
+        // Quad-tree; find the val*R < R[l][m];
+        // Update val by remove checked elements, 
+        // e.g. R=1 and val=0.68, depth 0: [[0.2, 0.4],[0.1 (l=1;m=0), 0.3]] 
+        // => sumr=0.08 after the layer; check l=2,m=0 for next layer (i=1): [2][0], [3][0],[2][1], [3][1] 
         if (val>sumr+ratetotals[i][l][m]) {
             sumr=ratetotals[i][l][m];
             if (val>sumr+ratetotals[i][l+1][m]) {
@@ -318,6 +321,9 @@ double step(double val)
         }
 
     }
+    
+    // Check the last layer; still only 4 leaves to check
+    // Update l, m 
     sumr = 0.0;
     if (val>sumr+ratetotals[i][l][m]) {
         sumr=ratetotals[i][l][m];
@@ -325,7 +331,6 @@ double step(double val)
             sumr+=ratetotals[i][l+1][m];
             if (val>sumr+ratetotals[i][l+1][m+1]) {
                 sumr+=ratetotals[i][l+1][m+1];
-
                 m=m+1;
                 val -= sumr;
             }
@@ -340,6 +345,9 @@ double step(double val)
             val -= sumr;
         }
     }
+    
+    // Find the next-step movement for the chosen atom
+    // rates[i][j][0:6]: hopping up, down, left, right, desorption, adsorption
     i=0;
     sumr = rates[l][m][i];
     int move;
@@ -359,15 +367,12 @@ double step(double val)
                     i++;
                     sumr += rates[l][m][i];
                     if (val > sumr) {
-
                         //adsorb
-//						printf("should be no adsorption\n");
                         move = 0;
                         dc = 1;
                     }
                     else {
                         //desorb
-                        //printf("should be no desorption\n");
                         move = 0;
                         dc = -1;
                     }
@@ -409,13 +414,14 @@ double step(double val)
     }
     height[l][m]+=dc;
 
-
+    // Update the nl, nm height for the arriving atom hopped from l,m
+    // Also update the rates for nl, nm and its neighbors for updated height.
     if (move == 1) {
         height[(nl+arraySize)%arraySize][(nm+arraySize)%arraySize] += dn;
         calcLocalRates(nl,nm);
     }
 
-    calcLocalRates(l,m);
+    calcLocalRates(l,m);  /*Update atom[l][m]'s rates*/
 
     updateLocalTree(l,m);
 
@@ -523,7 +529,6 @@ void Solver::run()
             results->resetTimer = false;
         }
         setupSteps(results->steps);
-
 
         updateRates();
 
